@@ -3,6 +3,8 @@
 
 use core::panic::PanicInfo;
 
+mod vga_buffer;
+
 
 // function to handle panic, `!` means a function
 // that does not return control to its caller.
@@ -14,31 +16,21 @@ use core::panic::PanicInfo;
 // The function should never return, so it is marked as a diverging
 // function by returning the “never” type !.
 #[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {
-
-    }
+fn panic(info: &PanicInfo) -> ! {
+    println!("{}", info);
+    loop {}
 }
-
-static HELLO: &[u8] = b"Welcome to LumexOS!";
 
 #[no_mangle] // don't mangle the name of this function
 pub extern "C" fn _start() -> ! {
     // this function is the entry point, since the linker looks for a function
-    // named `_start` by default
+    // named `_start` by default.
+    println!("Welcome to LumexOS {}\
+         Current year - {}", "😎", 2022);
 
-    let vga_buffer = 0xb8000 as *mut u8;
+    // unwrap panics if an error occurs. This isn’t a problem in our case,
+    // since writes to the VGA buffer never fails.
+    // write!(vga_buffer::WRITER.lock(), "Current year - {}", 2022).unwrap();
 
-    // we use the offset method to write the string byte and the corresponding
-    // color byte : https://github.com/rust-osdev/vga/blob/master/src/colors.rs
-    for (i, &byte) in HELLO.iter().enumerate() {
-        unsafe {
-            *vga_buffer.offset(i as isize * 2) = byte;
-            *vga_buffer.offset(i as isize * 2 + 1) = 0x9;
-        }
-    }
-
-    loop {
-
-    }
+    loop { }
 }
