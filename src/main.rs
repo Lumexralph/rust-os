@@ -49,11 +49,27 @@ pub extern "C" fn _start() -> ! {
     loop { }
 }
 
+pub trait Testable {
+    fn run(&self) -> ();
+}
+
+// implement this trait for all types T that implement the Fn() trait.
+impl<T> Testable for T
+    where T: Fn() {
+    fn run(&self) -> () {
+        // We implement the run function by first printing the function name using
+        // the any::type_name function.
+        serial_print!("{}...\t", core::any::type_name::<T>());
+        self(); // invoke the test function
+        serial_println!("[ok]");
+    }
+}
+
 #[cfg(test)]
-fn test_runner(tests: &[&dyn Fn()]) {
+fn test_runner(tests: &[&dyn Testable]) {
     serial_println!("Running {} tests", tests.len());
     for test in tests {
-        test();
+        test.run();
     }
 
     exit_qemu(QemuExitCode::Success);
@@ -61,9 +77,7 @@ fn test_runner(tests: &[&dyn Fn()]) {
 
 #[test_case]
 fn trivial_assertion() {
-    serial_print!("trivial assertion...");
     assert_eq!(3,3);
-    serial_println!("[OK]");
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
