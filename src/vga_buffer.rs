@@ -184,3 +184,31 @@ pub fn _print(args: fmt::Arguments) {
     // since writes to the VGA buffer never fails. we returned OK() in write_str.
     WRITER.lock().write_fmt(args).unwrap();
 }
+
+#[test_case]
+fn test_println_simple() {
+    println!("test_println_simple output");
+}
+
+#[test_case]
+fn test_println_many_input() {
+    for _ in 0..200 {
+        println!("test_println_many_input output");
+    }
+}
+
+#[test_case]
+fn test_println_output() {
+    let s = "Both operations are unsafe, because writing to an I/O port";
+    println!("{}", s);
+    for (i, c) in s.chars().enumerate() {
+        let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
+        assert_eq!(char::from(screen_char.ascii_character), c);
+    }
+}
+
+// TODO: Tests to be written
+// - a function that tests that no panic occurs when printing very long lines and that
+// they’re wrapped correctly.
+//- a function for testing that newlines, non-printable characters, and non-unicode
+// characters are handled correctly.
