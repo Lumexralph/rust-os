@@ -33,17 +33,12 @@ pub extern "C" fn _start() -> ! {
     // initialize the IDT to be used by the CPU.
     rust_os::init();
 
-    // invoke a breakpoint exception.
-    // x86_64::instructions::interrupts::int3();
+   fn stack_overflow() {
+       stack_overflow();
+   }
 
-    // intentionally, trigger a page fault exception.
-    // The virtual address is not mapped to a physical address
-    // in the page tables, so a page fault occurs.
-    unsafe {
-        // create a raw pointer from the random memory address
-        // which is mostly invalid and assign a value to it.
-        *(0xdeabacdeef as *mut u64) = 42;
-    }
+    // trigger stack overflow
+    stack_overflow();
 
     #[cfg(test)]
         test_main();
