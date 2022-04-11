@@ -95,4 +95,11 @@ fn panic(info: &PanicInfo) -> ! {
 pub fn init() {
     gdt::init();
     interrupts::init_idt();
+    //  initialize the 8259 PIC. It is unsafe because it can cause undefined
+    // behavior if the PIC is misconfigured.
+    unsafe { interrupts::PICS.lock().initialize() };
+
+    // The interrupts::enable function of the x86_64 crate executes the special
+    // sti instruction (“set interrupts”) to enable external interrupts.
+    x86_64::instructions::interrupts::enable();
 }
