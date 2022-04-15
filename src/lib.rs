@@ -67,12 +67,25 @@ pub fn test_runner(tests: &[&dyn Testable]) {
     exit_qemu(QemuExitCode::Success);
 }
 
+// Until now we used a simple empty loop statement at the end of our _start and panic functions.
+// This causes the CPU to spin endlessly and thus works as expected. But it is also very
+// inefficient, because the CPU continues to run at full speed even though there’s no work to do.
+//
+// What we really want to do is to halt the CPU until the next interrupt arrives.
+// This allows the CPU to enter a sleep state in which it consumes much less energy.
+// The hlt instruction does exactly that.
+pub fn hlt_loop() -> ! {
+    loop {
+        x86_64::instructions::hlt();
+    }
+}
+
 // Panic handler in test mode.
 pub fn test_panic_handler(info: &PanicInfo) -> ! {
     serial_println!("[failed]\n");
     serial_println!("Error: {}", info);
     exit_qemu(QemuExitCode::Failed);
-    loop { }
+    hlt_loop();
 }
 
 /// Entry point for `cargo test`
@@ -81,8 +94,7 @@ pub fn test_panic_handler(info: &PanicInfo) -> ! {
 pub extern "C" fn _start() -> ! {
     init();
     test_main();
-
-    loop { }
+    hlt_loop();
 }
 
 #[cfg(test)]
@@ -95,4 +107,11 @@ fn panic(info: &PanicInfo) -> ! {
 pub fn init() {
     gdt::init();
     interrupts::init_idt();
+    //  initialize the 8259 PIC. It is unsafe because it can cause undefined
+    // behavior if the PIC is misconfigured.
+    unsafe { interrupts::PICS.lock().initialize() };
+
+    // The interrupts::enable function of the x86_64 crate executes the special
+    // sti instruction (“set interrupts”) to enable external interrupts.
+    x86_64::instructions::interrupts::enable();
 }
