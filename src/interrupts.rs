@@ -3,6 +3,8 @@ use crate::{gdt, print, println};
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
 use spin;
+use spin::Mutex;
+use x86_64::instructions::port::Port;
 
 lazy_static! {
     static ref IDT: InterruptDescriptorTable = {
@@ -14,6 +16,8 @@ lazy_static! {
         }
         idt[InterruptIndex::Timer.as_usize()]
                 .set_handler_fn(timer_interrupt_handler);
+        idt[InterruptIndex::Keyboard.as_usize()]
+                .set_handler_fn(keyboard_interrupt_handler);
 
         idt
     };
@@ -52,7 +56,8 @@ pub static PICS: spin::Mutex<ChainedPics> =
 #[derive(Debug, Clone, Copy)]
 #[repr(u8)]
 pub enum InterruptIndex {
-    Timer = PIC_1_OFFSET,
+    Timer = PIC_1_OFFSET, // 32
+    Keyboard, // 33 (previous value in enum + 1)
 }
 
 impl InterruptIndex {
@@ -77,6 +82,39 @@ extern "x86-interrupt" fn timer_interrupt_handler(_stack_frame: InterruptStackFr
     // accidentally delete an important unsent interrupt or cause our system to hang.
     // This is the reason that the function is unsafe.
     unsafe { PICS.lock().notify_end_of_interrupt(InterruptIndex::Timer.as_u8()) }
+}
+
+extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStackFrame) {
+    // the keyboard controller won’t send another interrupt until we have read the
+    // so-called scancode of the pressed key.
+    // We use the Port type of the x86_64 crate to read a byte from the keyboard’s data port.
+    // This byte is called the scancode and is a number that represents the key press/release.
+    use x86_64::instructions::port::Port;
+    use spin::Mutex;
+    use pc_keyboard::{ layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1 };
+
+    lazy_static! {
+        static ref KEYBOARD: Mutex<Keyboard<layouts::Us104Key, ScancodeSet1>> =
+            Mutex::new(Keyboard::new(layouts::Us104Key, ScancodeSet1, HandleControl::Ignore));
+    }
+
+    let mut keyboard = KEYBOARD.lock();
+    let mut port = Port::new(0x60);
+
+    let scancode: u8 = unsafe { port.read() };
+    if let Ok(Some(key_event)) = keyboard.add_byte(scancode) {
+        if let Some(key) = keyboard.process_keyevent(key_event) {
+            match key {
+                DecodedKey::Unicode(character) => print!("{}", character),
+                DecodedKey::RawKey(key) => print!("{:?}", key),
+            }
+        }
+    }
+
+    unsafe {
+        PICS.lock()
+            .notify_end_of_interrupt(InterruptIndex::Keyboard.as_u8());
+    }
 }
 
 #[test_case]

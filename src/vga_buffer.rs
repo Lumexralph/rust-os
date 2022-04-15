@@ -147,6 +147,7 @@ impl fmt::Write for Writer {
 
 use lazy_static::lazy_static;
 use spin::Mutex;
+use x86_64::instructions::interrupts;
 
 // With lazy_static, we can define our static WRITER without problems.
 lazy_static! {
@@ -179,10 +180,16 @@ macro_rules! println {
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
     use core::fmt::Write;
+    use x86_64::instructions::interrupts;
 
-    // unwrap panics if an error occurs. This isn’t a problem in our case,
-    // since writes to the VGA buffer never fails. we returned OK() in write_str.
-    WRITER.lock().write_fmt(args).unwrap();
+    // The without_interrupts function takes a closure and executes it in an interrupt-free
+    // environment. We use it to ensure that no interrupt can occur as long as the Mutex is locked.
+    // This helps avoid a deadlock from the interrupt handler trying to acquire Writer lock.
+    interrupts::without_interrupts(|| {
+        // unwrap panics if an error occurs. This isn’t a problem in our case,
+        // since writes to the VGA buffer never fails. we returned OK() in write_str.
+        WRITER.lock().write_fmt(args).unwrap();
+    });
 }
 
 #[test_case]
@@ -199,12 +206,20 @@ fn test_println_many_input() {
 
 #[test_case]
 fn test_println_output() {
+    use x86_64::instructions::interrupts;
+
     let s = "Both operations are unsafe, because writing to an I/O port";
     println!("{}", s);
-    for (i, c) in s.chars().enumerate() {
-        let screen_char = WRITER.lock().buffer.chars[BUFFER_HEIGHT - 2][i].read();
-        assert_eq!(char::from(screen_char.ascii_character), c);
-    }
+
+    interrupts::without_interrupts(|| {
+        let mut writer = WRITER.lock();
+        writeln!(writer, "\n{}", s).expect("writeln failed");
+
+        for (i, c) in s.chars().enumerate() {
+            let screen_char = writer.buffer.chars[BUFFER_HEIGHT - 2][i].read();
+            assert_eq!(char::from(screen_char.ascii_character), c);
+        }
+    });
 }
 
 // TODO: Tests to be written
