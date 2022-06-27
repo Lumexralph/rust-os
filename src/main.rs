@@ -4,15 +4,25 @@
 #![test_runner(rust_os::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 
+extern crate alloc;
+
+use alloc::boxed::Box;
 use core::panic::PanicInfo;
-use rust_os::{hlt_loop, memory, println};
-use bootloader::{BootInfo, entry_point};
 use x86_64::{
     structures::{
         paging::{ Translate, Page },
     },
     VirtAddr
 };
+
+use rust_os::{hlt_loop, println};
+use rust_os::{
+    allocator,
+    memory::{ // self means the memory crate, we can access public values
+        self, BootFrameAllocator,
+    }
+};
+use bootloader::{BootInfo, entry_point};
 
 // function to handle panic, `!` means a function
 // that does not return control to its caller.
@@ -76,6 +86,13 @@ fn kernel_main(boot_info: &'static BootInfo) -> ! {
         let phys = mapper.translate_addr(virt);
         println!("{:?} -> {:?}", virt, phys);
     }
+
+    // initialize the heap memory.
+    allocator::init_heap(&mut mapper, &mut frame_allocator)
+        .expect("heap initialization failed");
+
+    let x = Box::new(41);
+    println!("value {:} allocated on the heap!", *x);
 
     #[cfg(test)]
     test_main();
