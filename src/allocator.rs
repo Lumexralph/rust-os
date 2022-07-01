@@ -16,6 +16,7 @@ use x86_64::{
     },
     VirtAddr,
 };
+use linked_list_allocator::LockedHeap;
 
 /// The #[global_allocator] attribute tells the Rust compiler which allocator instance
 /// it should use as the global heap allocator. The attribute is only applicable to
@@ -23,7 +24,7 @@ use x86_64::{
 /// Since the Dummy allocator is a zero sized type, we don’t need to specify any
 /// fields in the initialization expression.
 #[global_allocator]
-static ALLOCATOR: Dummy = Dummy;
+static ALLOCATOR: LockedHeap = LockedHeap::empty();
 
 pub const HEAP_START: usize = 0x4444_4444_000;
 // 100KiB, if we need more space in the future, we can increase it.
@@ -57,17 +58,10 @@ pub fn init_heap(
         };
     }
 
+    // initialize the allocator after creating the heap
+    unsafe {
+        ALLOCATOR.lock().init(HEAP_START, HEAP_SIZE);
+    }
+
     Ok(())
-}
-
-pub struct Dummy;
-
-unsafe impl GlobalAlloc for Dummy {
-    unsafe fn alloc(&self, _layout: Layout) -> *mut u8 {
-       null_mut()
-    }
-
-    unsafe fn dealloc(&self, _ptr: *mut u8, _layout: Layout) {
-        panic!("dealloc should never be called")
-    }
 }

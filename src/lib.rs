@@ -5,6 +5,7 @@
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
 #![feature(alloc_error_handler)]
+#![feature(allocator_api)]
 
 // Like the main.rs, the lib.rs is a special file that is automatically recognized by cargo.
 // The library is a separate compilation unit, so we need to specify the #![no_std]
