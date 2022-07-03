@@ -1,10 +1,6 @@
 // #[alloc_error_handler] attribute specifies a function that is called when an allocation
 // error occurs, similar to how our panic handler is called when a panic occurs.
 
-
-use alloc::alloc::{GlobalAlloc, Layout};
-use core::alloc::Allocator;
-use core::ptr::null_mut;
 use x86_64::{
     structures::paging::{
         mapper::MapToError,

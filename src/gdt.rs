@@ -2,7 +2,6 @@ use x86_64::VirtAddr;
 use x86_64::structures::tss::TaskStateSegment;
 use lazy_static::lazy_static;
 use x86_64::structures::gdt::{GlobalDescriptorTable, Descriptor, SegmentSelector};
-use crate::gdt;
 
 pub const DOUBLE_FAULT_IST_INDEX: u16 = 0;
 
@@ -40,7 +39,6 @@ struct Selectors {
 
 pub fn init() {
     // use the selectors to reload the cs segment register and load our TSS.
-    use x86_64::instructions::segmentation::set_cs;
     use x86_64::registers::segmentation::{ Segment, CS };
     use x86_64::instructions::tables::load_tss;
 

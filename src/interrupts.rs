@@ -2,7 +2,6 @@ use x86_64::structures::idt::{InterruptDescriptorTable, InterruptStackFrame};
 use crate::{gdt, print, println};
 use lazy_static::lazy_static;
 use pic8259::ChainedPics;
-use spin;
 use spin::Mutex;
 use x86_64::instructions::port::Port;
 
@@ -90,8 +89,6 @@ extern "x86-interrupt" fn keyboard_interrupt_handler(_stack_frame: InterruptStac
     // so-called scancode of the pressed key.
     // We use the Port type of the x86_64 crate to read a byte from the keyboard’s data port.
     // This byte is called the scancode and is a number that represents the key press/release.
-    use x86_64::instructions::port::Port;
-    use spin::Mutex;
     use pc_keyboard::{ layouts, DecodedKey, HandleControl, Keyboard, ScancodeSet1 };
 
     lazy_static! {
