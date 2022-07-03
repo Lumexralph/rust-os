@@ -43,8 +43,7 @@ struct ScreenChar {
 const BUFFER_HEIGHT: usize = 25;
 const BUFFER_WIDTH: usize = 80;
 
-use core::fmt;
-use core::fmt::Write;
+use core::{ fmt, fmt::Write };
 use volatile::Volatile;
 
 // Since the field ordering in default structs is undefined in Rust,
@@ -179,9 +178,6 @@ macro_rules! println {
 
 #[doc(hidden)]
 pub fn _print(args: fmt::Arguments) {
-    use core::fmt::Write;
-    use x86_64::instructions::interrupts;
-
     // The without_interrupts function takes a closure and executes it in an interrupt-free
     // environment. We use it to ensure that no interrupt can occur as long as the Mutex is locked.
     // This helps avoid a deadlock from the interrupt handler trying to acquire Writer lock.

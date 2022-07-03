@@ -4,6 +4,8 @@
 #![feature(abi_x86_interrupt)]
 #![test_runner(crate::test_runner)]
 #![reexport_test_harness_main = "test_main"]
+#![feature(alloc_error_handler)]
+#![feature(allocator_api)]
 
 // Like the main.rs, the lib.rs is a special file that is automatically recognized by cargo.
 // The library is a separate compilation unit, so we need to specify the #![no_std]
@@ -14,8 +16,9 @@
 // The library is usable like a normal external crate. It is called like our crate,
 // which is rust_os in our case.
 
-use core::panic::PanicInfo;
+extern crate alloc;
 
+use core::panic::PanicInfo;
 #[cfg(test)]
 use bootloader::{entry_point, BootInfo};
 
@@ -24,6 +27,12 @@ pub mod serial;
 pub mod interrupts;
 pub mod gdt;
 pub mod memory;
+pub mod allocator;
+
+#[alloc_error_handler]
+fn alloc_error_handler(layout: alloc::alloc::Layout) -> ! {
+    panic!("allocation error: {:?}", layout)
+}
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[repr(u32)]
